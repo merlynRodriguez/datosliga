@@ -138,10 +138,10 @@ function renderForm() {
 
           <div class="form-group">
             <label class="form-label">
-              Logo o escudo del equipo <span class="required">*</span>
+              Logo o escudo del equipo <span class="optional">(opcional)</span>
             </label>
             <div class="upload-zone" id="logo-zone">
-              <input type="file" id="logo-input" accept="image/*" capture="environment" />
+              <input type="file" id="logo-input" accept="image/*" />
               <div class="upload-icon">${ICONS.upload}</div>
               <div class="upload-text">
                 <strong>Haz clic o arrastra</strong> para subir el logo de tu equipo
@@ -172,7 +172,7 @@ function renderForm() {
               <div>
                 <div class="carnet-label">📋 Anverso (frente)</div>
                 <div class="upload-zone" id="carnet-anverso-zone">
-                  <input type="file" id="carnet-anverso-input" accept="image/*" capture="environment" />
+                  <input type="file" id="carnet-anverso-input" accept="image/*" />
                   <div class="upload-icon">${ICONS.camera}</div>
                   <div class="upload-text">
                     <strong>Sube o toma foto</strong> del frente del carnet
@@ -184,7 +184,7 @@ function renderForm() {
               <div>
                 <div class="carnet-label">📋 Reverso (dorso)</div>
                 <div class="upload-zone" id="carnet-reverso-zone">
-                  <input type="file" id="carnet-reverso-input" accept="image/*" capture="environment" />
+                  <input type="file" id="carnet-reverso-input" accept="image/*" />
                   <div class="upload-icon">${ICONS.camera}</div>
                   <div class="upload-text">
                     <strong>Sube o toma foto</strong> del reverso del carnet
@@ -232,7 +232,7 @@ function renderForm() {
               Fotografías del club <span class="optional">(opcional)</span>
             </label>
             <div class="upload-zone" id="galeria-zone">
-              <input type="file" id="galeria-input" accept="image/*" multiple capture="environment" />
+              <input type="file" id="galeria-input" accept="image/*" multiple />
               <div class="upload-icon">${ICONS.image}</div>
               <div class="upload-text">
                 <strong>Haz clic o arrastra</strong> para subir fotos del equipo, miembros o dirigentes
@@ -574,10 +574,7 @@ async function handleFormSubmit(e) {
     document.getElementById('nombre_equipo').focus();
     return;
   }
-  if (!logoFile) {
-    showToast('Por favor sube el logo de tu equipo', 'error');
-    return;
-  }
+
   if (!carnetAnversoFile) {
     showToast('Por favor sube la foto del anverso del carnet de identidad', 'error');
     return;
@@ -604,13 +601,16 @@ async function handleFormSubmit(e) {
     const timestamp = Date.now();
     const sanitizedName = sanitizeFilename(nombre);
 
-    // Upload logo
-    updateProgress(10, 'Subiendo logo del equipo...');
-    const logoPath = `${sanitizedName}_${timestamp}/logo.${getExtension(logoFile)}`;
-    const { error: logoError } = await supabase.storage
-      .from('logos')
-      .upload(logoPath, logoFile, { cacheControl: '3600', upsert: false });
-    if (logoError) throw new Error(`Error subiendo logo: ${logoError.message}`);
+    // Upload logo (optional)
+    let logoPath = null;
+    if (logoFile) {
+      updateProgress(10, 'Subiendo logo del equipo...');
+      logoPath = `${sanitizedName}_${timestamp}/logo.${getExtension(logoFile)}`;
+      const { error: logoError } = await supabase.storage
+        .from('logos')
+        .upload(logoPath, logoFile, { cacheControl: '3600', upsert: false });
+      if (logoError) throw new Error(`Error subiendo logo: ${logoError.message}`);
+    }
 
     // Upload carnet anverso
     updateProgress(30, 'Subiendo carnet (anverso)...');
@@ -644,7 +644,7 @@ async function handleFormSubmit(e) {
     }
 
     // Get URLs
-    const logoUrl = getPublicUrl('logos', logoPath);
+    const logoUrl = logoPath ? getPublicUrl('logos', logoPath) : null;
     // For carnets, we store the path (private bucket, need signed URLs for admin)
     const carnetAnversoUrl = `carnets/${anversoPath}`;
     const carnetReversoUrl = `carnets/${reversoPath}`;
